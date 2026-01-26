@@ -7,9 +7,10 @@ import java.util.List;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class PriceData {
-    private Double avgPrice;
-    private Double minPrice;
-    private Double maxPrice;
-    private List<String> sampleHotels;
+public class SeasonalityData {
+    private String season;
+    private Boolean isHoliday;
+    private Boolean isPeakSeason;
+    private Boolean isWeekend;
+    private List<String> holidays;
 }

@@ -1,8 +1,8 @@
 package com.event.tracker.controller;
 
 import com.event.tracker.model.EventAnalysisRequest;
-import com.event.tracker.model.EventAnalysisResponse;
-import com.event.tracker.service.EventAnalysisService;
+import com.event.tracker.model.EnhancedAnalysisResponse;
+import com.event.tracker.service.EnhancedPriceAnalysisService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.*;
 @Controller
 public class EventTrackerController {
 
-    private final EventAnalysisService analysisService;
+    private final EnhancedPriceAnalysisService analysisService;
 
-    public EventTrackerController(EventAnalysisService analysisService) {
+    public EventTrackerController(EnhancedPriceAnalysisService analysisService) {
         this.analysisService = analysisService;
     }
 
@@ -25,13 +25,14 @@ public class EventTrackerController {
     @PostMapping("/analyze")
     public String analyze(@ModelAttribute EventAnalysisRequest request, Model model) {
         try {
-            EventAnalysisResponse response = analysisService.analyzeEvents(request);
+            EnhancedAnalysisResponse response = analysisService.analyzeWithMultipleFactors(request);
             model.addAttribute("request", request);
             model.addAttribute("results", response);
             return "index";
         } catch (Exception e) {
             model.addAttribute("error", "Analysis failed: " + e.getMessage());
             model.addAttribute("request", request);
+            e.printStackTrace();
             return "index";
         }
     }

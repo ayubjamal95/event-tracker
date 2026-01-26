@@ -7,10 +7,12 @@ import java.util.List;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class EventAnalysisResponse {
+public class EnhancedAnalysisResponse {
     private List<Event> events;
-    private HotelPrices hotelPrices;
-    private Double surgePct;
+    private PriceAnalysis priceAnalysis;
+    private List<PriceFactor> contributingFactors;
+    private EventImpactScore eventImpactScore;
     private List<Alternative> alternatives;
+    private OccupancyData occupancyData;
     private String analysis;
 }
