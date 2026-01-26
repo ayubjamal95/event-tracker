@@ -3,7 +3,6 @@ package com.event.tracker.service;
 import com.event.tracker.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.logging.Log;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -15,7 +14,7 @@ import java.util.*;
 
 @Slf4j
 @Service
-public class EnhancedPriceAnalysisService {
+public class PriceAnalysisService {
 
     @Value("${anthropic.api.key}")
     private String apiKey;
@@ -27,7 +26,7 @@ public class EnhancedPriceAnalysisService {
     private final ObjectMapper objectMapper;
     private final EventAggregatorService eventAggregatorService;
 
-    public EnhancedPriceAnalysisService(
+    public PriceAnalysisService(
             WebClient.Builder webClientBuilder,
             ObjectMapper objectMapper,
             EventAggregatorService eventAggregatorService) {

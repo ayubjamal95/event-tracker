@@ -2,7 +2,7 @@ package com.event.tracker.controller;
 
 import com.event.tracker.model.EventAnalysisRequest;
 import com.event.tracker.model.EnhancedAnalysisResponse;
-import com.event.tracker.service.EnhancedPriceAnalysisService;
+import com.event.tracker.service.PriceAnalysisService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.*;
 @Controller
 public class EventTrackerController {
 
-    private final EnhancedPriceAnalysisService analysisService;
+    private final PriceAnalysisService analysisService;
 
-    public EventTrackerController(EnhancedPriceAnalysisService analysisService) {
+    public EventTrackerController(PriceAnalysisService analysisService) {
         this.analysisService = analysisService;
     }
 
