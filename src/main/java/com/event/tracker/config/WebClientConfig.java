@@ -10,16 +10,17 @@ import reactor.netty.http.client.HttpClient;
 @Configuration
 public class WebClientConfig {
 
-    @Bean
-    public WebClient.Builder webClientBuilder() {
-        // FIX #2: Configure buffer size to handle large responses
-        ExchangeStrategies strategies = ExchangeStrategies.builder()
-                .codecs(configurer -> configurer
-                        .defaultCodecs()
-                        .maxInMemorySize(10 * 1024 * 1024)) // 10MB buffer
-                .build();
-
+    @Bean(name = "ticketmasterWebClient")
+    public WebClient ticketmasterWebClient() {
         return WebClient.builder()
-                .exchangeStrategies(strategies);
+                .baseUrl("https://app.ticketmaster.com/discovery/v2")
+                .build();
+    }
+
+    @Bean(name = "holidayWebClient")
+    public WebClient holidayWebClient() {
+        return WebClient.builder()
+                .baseUrl("https://date.nager.at/api/v3")
+                .build();
     }
 }

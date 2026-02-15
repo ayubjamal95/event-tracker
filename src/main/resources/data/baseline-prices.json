@@ -1,0 +1,52 @@
+{
+  "cities": {
+    "berlin": {
+      "baseline_price": 95.0,
+      "currency": "EUR",
+      "source": "historical_average_2024",
+      "last_updated": "2025-01-01"
+    },
+    "paris": {
+      "baseline_price": 130.0,
+      "currency": "EUR",
+      "source": "historical_average_2024",
+      "last_updated": "2025-01-01"
+    },
+    "london": {
+      "baseline_price": 145.0,
+      "currency": "GBP",
+      "source": "historical_average_2024",
+      "last_updated": "2025-01-01"
+    },
+    "new york": {
+      "baseline_price": 180.0,
+      "currency": "USD",
+      "source": "historical_average_2024",
+      "last_updated": "2025-01-01"
+    },
+    "tokyo": {
+      "baseline_price": 110.0,
+      "currency": "JPY",
+      "source": "historical_average_2024",
+      "last_updated": "2025-01-01"
+    },
+    "barcelona": {
+      "baseline_price": 105.0,
+      "currency": "EUR",
+      "source": "historical_average_2024",
+      "last_updated": "2025-01-01"
+    },
+    "amsterdam": {
+      "baseline_price": 120.0,
+      "currency": "EUR",
+      "source": "historical_average_2024",
+      "last_updated": "2025-01-01"
+    },
+    "rome": {
+      "baseline_price": 100.0,
+      "currency": "EUR",
+      "source": "historical_average_2024",
+      "last_updated": "2025-01-01"
+    }
+  }
+}

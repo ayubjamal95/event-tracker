@@ -1,102 +1,156 @@
 package com.event.tracker.service;
 
 import com.event.tracker.model.Event;
-import com.event.tracker.model.api.*;
-import jakarta.annotation.PostConstruct;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.util.UriComponentsBuilder;
-import reactor.core.publisher.Mono;
-
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class TicketmasterService {
 
-    @Value("${ticketmaster.api.key}")
-    private String apiKey;
-
-    @Value("${ticketmaster.api.url}")
-    private String apiUrl;
-
     private final WebClient webClient;
+    private final String apiKey;
 
-    public TicketmasterService(WebClient.Builder webClientBuilder) {
-        this.webClient = webClientBuilder.build();
+    public TicketmasterService(
+            @Qualifier("ticketmasterWebClient") WebClient webClient,
+            @Value("${ticketmaster.api.key}") String apiKey) {
+        this.webClient = webClient;
+        this.apiKey = apiKey;
     }
 
-    @PostConstruct
-    public void init() {
-
-
-        // Force IPv4 stack to avoid macOS Netty IPv6 issues
-        System.setProperty("java.net.preferIPv4Stack", "true");
-    }
-
-    public List<Event> searchEvents(String city, String startDate, String endDate) {
+    public List<Event> fetchEvents(String city, String countryCode,
+                                   LocalDate startDate, LocalDate endDate,
+                                   int radiusKm) {
         try {
-            // Build full URI including API key and query params
-            String uri = UriComponentsBuilder.fromUriString(apiUrl) // full URL from properties
-                    .queryParam("apikey", apiKey)
-                    .queryParam("city", city)
-                    .queryParam("startDateTime", startDate + "T00:00:00Z")
-                    .queryParam("endDateTime", endDate + "T23:59:59Z")
-                    .queryParam("size", 20)
-                    .queryParam("sort", "relevance,desc")
-                    .build()
-                    .toUriString();
-
-            log.info("Ticketmaster Request URL: {}", uri);
-
-            TicketmasterResponse response = webClient.get()
-                    .uri(uri) // use the full URL directly
+            String response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/events.json")
+                            .queryParam("apikey", apiKey)
+                            .queryParam("city", city)
+                            .queryParam("countryCode", countryCode)
+                            .queryParam("startDateTime", startDate.atStartOfDay().format(
+                                    DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z")
+                            .queryParam("endDateTime", endDate.atTime(23, 59).format(
+                                    DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z")
+                            .queryParam("radius", radiusKm)
+                            .queryParam("unit", "km")
+                            .queryParam("size", 50)
+                            .queryParam("sort", "relevance,desc")
+                            .build())
                     .retrieve()
-                    .bodyToMono(TicketmasterResponse.class)
+                    .bodyToMono(String.class)
                     .block();
 
-            log.info("Ticketmaster response URL: {}", response);
-            if (response != null && response.get_embedded() != null &&
-                    response.get_embedded().getEvents() != null) {
-                return response.get_embedded().getEvents().stream()
-                        .map(this::convertToEvent)
-                        .collect(Collectors.toList());
-            }
+            return parseEvents(response);
 
-            return new ArrayList<>();
         } catch (Exception e) {
-            log.error("Ticketmaster API error: {}", e.getMessage(), e);
-            return new ArrayList<>();
+            log.error("Error fetching events from Ticketmaster", e);
+            return List.of();
         }
     }
 
-    private Event convertToEvent(TicketmasterEvent tmEvent) {
-        Event event = new Event();
-        event.setName(tmEvent.getName());
+    private List<Event> parseEvents(String jsonResponse) {
+        List<Event> events = new ArrayList<>();
 
-        if (tmEvent.getDates() != null && tmEvent.getDates().getStart() != null) {
-            event.setDate(tmEvent.getDates().getStart().getLocalDate());
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper =
+                    new com.fasterxml.jackson.databind.ObjectMapper();
+            JsonNode root = mapper.readTree(jsonResponse);
+
+            JsonNode embedded = root.path("_embedded");
+            if (embedded.isMissingNode()) {
+                return events;
+            }
+
+            JsonNode eventsNode = embedded.path("events");
+            if (!eventsNode.isArray()) {
+                return events;
+            }
+
+            for (JsonNode eventNode : eventsNode) {
+                Event event = parseEvent(eventNode);
+                if (event != null) {
+                    events.add(event);
+                }
+            }
+
+        } catch (Exception e) {
         }
 
-        if (tmEvent.getClassifications() != null && !tmEvent.getClassifications().isEmpty() &&
-                tmEvent.getClassifications().get(0).getSegment() != null) {
-            event.setType(tmEvent.getClassifications().get(0).getSegment().getName());
-        } else {
-            event.setType("Event");
+        return events;
+    }
+
+    private Event parseEvent(JsonNode eventNode) {
+        try {
+            String id = eventNode.path("id").asText();
+            String name = eventNode.path("name").asText();
+            String type = eventNode.path("classifications").get(0)
+                    .path("segment").path("name").asText("event");
+
+            JsonNode dates = eventNode.path("dates").path("start");
+            LocalDate date = LocalDate.parse(dates.path("localDate").asText());
+            LocalTime time = dates.has("localTime")
+                    ? LocalTime.parse(dates.path("localTime").asText())
+                    : null;
+
+            JsonNode venueNode = eventNode.path("_embedded").path("venues").get(0);
+            String venue = venueNode.path("name").asText("Unknown Venue");
+
+            // Estimate capacity and visitors
+            int capacity = estimateCapacity(type, venueNode);
+            int expectedVisitors = (int) (capacity * 0.85); // Assume 85% attendance
+
+            // Calculate impact level
+            String impactLevel = calculateImpactLevel(capacity, type);
+
+            return Event.builder()
+                    .id(id)
+                    .name(name)
+                    .type(type.toLowerCase())
+                    .venue(venue)
+                    .date(date)
+                    .time(time)
+                    .capacity(capacity)
+                    .expectedVisitors(expectedVisitors)
+                    .distanceKm(0.0) // Will be calculated if geo data available
+                    .impactLevel(impactLevel)
+                    .ticketAvailability("available")
+                    .build();
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private int estimateCapacity(String type, JsonNode venueNode) {
+        // Try to get actual capacity
+        JsonNode capacityNode = venueNode.path("capacity");
+        if (!capacityNode.isMissingNode()) {
+            return capacityNode.asInt();
         }
 
-        if (tmEvent.get_embedded() != null &&
-                tmEvent.get_embedded().getVenues() != null &&
-                !tmEvent.get_embedded().getVenues().isEmpty()) {
-            event.setVenue(tmEvent.get_embedded().getVenues().get(0).getName());
-        } else {
-            event.setVenue("TBA");
-        }
+        // Estimate based on type
+        return switch (type.toLowerCase()) {
+            case "music", "concert" -> 15000;
+            case "sports" -> 20000;
+            case "arts", "theatre" -> 2000;
+            case "family" -> 5000;
+            default -> 10000;
+        };
+    }
 
-        return event;
+    private String calculateImpactLevel(int capacity, String type) {
+        if (capacity > 15000) return "high";
+        if (capacity > 5000) return "medium";
+        return "low";
     }
 }
